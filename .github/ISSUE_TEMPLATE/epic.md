@@ -4,7 +4,7 @@
 
 ## Doel
 
-> Beschrijf het grotere gebruikers- of productdoel van deze Epic en waarom deze functionaliteit nodig is binnen Nimbus.
+> Beschrijf het grotere gebruikers of productdoel van deze Epic en waarom deze functionaliteit nodig is binnen Nimbus.
 
 ...
 
