@@ -16,6 +16,7 @@ if config.config_file_name is not None:
 
 from app.db.base import Base
 from app.core.config import settings
+from app.models.company import Company  # noqa: F401
 
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
