@@ -94,7 +94,7 @@ pip install -r requirements.txt
 cd ..
 # Kopieer .env.example naar .env en gebruik hetzelfde databasewachtwoord
 # als in backend/.env.
-docker compose up -d
+docker compose up -d --wait
 cd backend
 
 python -m alembic upgrade head
@@ -136,8 +136,10 @@ Maak daarnaast in de projectroot een `.env` voor Docker Compose. Gebruik voor
 POSTGRES_DB=ai_customer_support
 POSTGRES_USER=nimbus
 POSTGRES_PASSWORD=<postgres_password>
-POSTGRES_PORT=5432
 ```
+
+PostgreSQL gebruikt lokaal vast poort `5432`. De optie `--wait` wacht totdat
+PostgreSQL gezond is voordat de Alembic-migraties worden uitgevoerd.
 
 ---
 

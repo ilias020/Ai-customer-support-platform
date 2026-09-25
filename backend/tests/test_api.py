@@ -1,10 +1,12 @@
 from pathlib import Path
 
 import pytest
+from alembic.config import Config
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.core.config import Settings
+from app.database.alembic import escape_alembic_config_value
 from app.main import app, create_app
 from app.modules.workspaces.models import Workspace
 from app.modules.workspaces.schemas import WorkspaceCreate
@@ -40,6 +42,18 @@ def test_invalid_database_url_is_reported():
             database_url="",
             _env_file=None,
         )
+
+
+def test_alembic_accepts_percent_encoded_database_password():
+    database_url = "postgresql+psycopg://nimbus:p%40ss@127.0.0.1:5432/nimbus"
+    alembic_config = Config()
+
+    alembic_config.set_main_option(
+        "sqlalchemy.url",
+        escape_alembic_config_value(database_url),
+    )
+
+    assert alembic_config.get_main_option("sqlalchemy.url") == database_url
 
 
 def test_sensitive_configuration_is_excluded_from_output():
