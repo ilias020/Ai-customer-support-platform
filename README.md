@@ -89,6 +89,16 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 
+# Kopieer backend/.env.example naar backend/.env en vul de waarden in.
+
+cd ..
+# Kopieer .env.example naar .env en gebruik hetzelfde databasewachtwoord
+# als in backend/.env.
+docker compose up -d
+cd backend
+
+python -m alembic upgrade head
+
 uvicorn app.main:app --reload
 ```
 
@@ -111,9 +121,22 @@ NEXT_PUBLIC_API_URL=<backend_url>
 Maak in de map `backend` een `.env` bestand aan.
 
 ```env
-DATABASE_URL=<postgres_connection_string>
+APP_NAME=Nimbus API
+ENVIRONMENT=development
+LOG_LEVEL=INFO
+DATABASE_URL=postgresql+psycopg://nimbus:<postgres_password>@127.0.0.1:5432/ai_customer_support
 CLAUDE_API_KEY=<claude_api_key>
 JWT_SECRET_KEY=<jwt_secret_key>
+```
+
+Maak daarnaast in de projectroot een `.env` voor Docker Compose. Gebruik voor
+`POSTGRES_PASSWORD` dezelfde waarde als `<postgres_password>` in `DATABASE_URL`.
+
+```env
+POSTGRES_DB=ai_customer_support
+POSTGRES_USER=nimbus
+POSTGRES_PASSWORD=<postgres_password>
+POSTGRES_PORT=5432
 ```
 
 ---

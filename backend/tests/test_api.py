@@ -27,15 +27,25 @@ def test_application_starts():
 
 def test_missing_required_configuration_is_reported(monkeypatch):
     monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
 
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
 
 
+def test_invalid_database_url_is_reported():
+    with pytest.raises(ValidationError):
+        Settings(
+            environment="testing",
+            database_url="",
+            _env_file=None,
+        )
+
+
 def test_sensitive_configuration_is_excluded_from_output():
     test_settings = Settings(
         environment="testing",
-        database_url="postgresql://user:database-secret@localhost/nimbus",
+        database_url="postgresql+psycopg://user:database-secret@localhost/nimbus",
         claude_api_key="provider-secret",
         jwt_secret_key="jwt-secret",
     )
