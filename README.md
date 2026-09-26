@@ -159,9 +159,7 @@ Zorg ervoor dat:
 
 ## Frontend
 
-```bash
-npm test
-```
+Frontendtests worden toegevoegd zodra de testinfrastructuur is ingericht.
 
 ## Backend
 
