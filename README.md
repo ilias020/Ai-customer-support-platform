@@ -125,6 +125,7 @@ APP_NAME=Nimbus API
 ENVIRONMENT=development
 LOG_LEVEL=INFO
 DATABASE_URL=postgresql+psycopg://nimbus:<postgres_password>@127.0.0.1:5432/ai_customer_support
+TEST_DATABASE_URL=postgresql+psycopg://nimbus:<postgres_password>@127.0.0.1:5432/ai_customer_support_test
 CLAUDE_API_KEY=<claude_api_key>
 JWT_SECRET_KEY=<jwt_secret_key>
 ```
@@ -140,6 +141,35 @@ POSTGRES_PASSWORD=<postgres_password>
 
 PostgreSQL gebruikt lokaal vast poort `5432`. De optie `--wait` wacht totdat
 PostgreSQL gezond is voordat de Alembic-migraties worden uitgevoerd.
+
+### Testdatabase
+
+De backendtests gebruiken een aparte PostgreSQL-database om te voorkomen dat tests
+de developmentdatabase wijzigen. Deze database wordt geconfigureerd via
+`TEST_DATABASE_URL` in `backend/.env`.
+
+Nadat PostgreSQL via Docker Compose is gestart, maak je de testdatabase eenmalig aan:
+
+```powershell
+docker compose exec postgres createdb -U nimbus ai_customer_support_test
+```
+
+Voer daarna vanuit de map `backend` de Alembic-migraties uit op de testdatabase:
+
+```powershell
+$env:DATABASE_URL = python -c "from dotenv import dotenv_values; print(dotenv_values('.env')['TEST_DATABASE_URL'])"
+python -m alembic upgrade head
+Remove-Item Env:DATABASE_URL
+```
+
+Daarna kunnen de backendtests worden uitgevoerd:
+
+```powershell
+pytest -v
+```
+
+De tests vereisen een geldige `TEST_DATABASE_URL` en gebruiken
+`ai_customer_support_test` als geïsoleerde testdatabase.
 
 ---
 
