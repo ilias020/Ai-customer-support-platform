@@ -102,6 +102,30 @@ python -m alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
+## Docker: frontend dependencies vernieuwen
+
+De frontend gebruikt een persistent Docker-volume voor `node_modules`. Wanneer `frontend/package.json` of `frontend/package-lock.json` verandert, moet dit volume opnieuw worden aangemaakt zodat de container de actuele dependencies gebruikt.
+
+Stop eerst de lokale Docker-omgeving:
+
+```powershell
+docker compose down
+```
+
+Verwijder vervolgens het frontend dependency-volume:
+
+```powershell
+docker volume rm ai-customer-support-platform_frontend_node_modules
+```
+
+Bouw en start daarna de Docker-omgeving opnieuw:
+
+```powershell
+docker compose up -d --build
+```
+
+Hierbij wordt alleen het volume voor de frontenddependencies opnieuw aangemaakt. Het PostgreSQL-volume blijft behouden.
+
 ---
 
 # ⚙️ Environment Variables
@@ -137,10 +161,13 @@ Maak daarnaast in de projectroot een `.env` voor Docker Compose. Gebruik voor
 POSTGRES_DB=ai_customer_support
 POSTGRES_USER=nimbus
 POSTGRES_PASSWORD=<postgres_password>
+DOCKER_DATABASE_URL=postgresql+psycopg://nimbus:<url_encoded_postgres_password>@postgres:5432/ai_customer_support
 ```
 
 PostgreSQL gebruikt lokaal vast poort `5432`. De optie `--wait` wacht totdat
 PostgreSQL gezond is voordat de Alembic-migraties worden uitgevoerd.
+
+`DOCKER_DATABASE_URL` wordt door de backend-container gebruikt om verbinding te maken met de PostgreSQL-service binnen Docker. Gebruik hiervoor dezelfde databasegegevens als hierboven. Het wachtwoord in `DOCKER_DATABASE_URL` moet URL-encoded worden als het gereserveerde URL-tekens bevat.
 
 ### Testdatabase
 
