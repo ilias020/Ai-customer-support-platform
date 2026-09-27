@@ -28,7 +28,7 @@ services:
       APP_NAME: Nimbus API
       ENVIRONMENT: development
       LOG_LEVEL: INFO
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL in the root .env file}
       CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
     depends_on:
