@@ -50,9 +50,12 @@ def test_invalid_database_credentials_fail_without_exposing_password():
             with invalid_engine.connect():
                 pass
 
-        error_message = str(exc_info.value)
+        original_error = exc_info.value.orig
+        sqlstate = getattr(original_error, "sqlstate", None)
+        error_message = str(original_error)
 
-        assert invalid_password not in error_message
+        assert sqlstate == "28P01" or "password authentication failed" in error_message
+        assert invalid_password not in str(exc_info.value)
     finally:
         invalid_engine.dispose()
 
