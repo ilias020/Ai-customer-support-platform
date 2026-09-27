@@ -77,54 +77,49 @@ npm run dev
 
 ## Backend
 
+Maak eerst `backend/.env` en de `.env` in de projectroot aan zoals beschreven bij [Environment Variables](#️-environment-variables).
+
+Start vervolgens de volledige lokale omgeving:
+
 ```bash
-cd backend
-python -m venv .venv
+docker compose up -d --build --wait
+```
 
-# Windows
-.venv\Scripts\activate
+Voer de database-migraties uit binnen de backend-container:
 
-# macOS / Linux
-source .venv/bin/activate
+```bash
+docker compose exec backend python -m alembic upgrade head
+```
 
-pip install -r requirements.txt
+De frontend, backend en PostgreSQL draaien daarna gezamenlijk via Docker Compose.
 
-# Kopieer backend/.env.example naar backend/.env en vul de waarden in.
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8000`
+- API-documentatie: `http://localhost:8000/docs`
 
-cd ..
-# Kopieer .env.example naar .env en gebruik hetzelfde databasewachtwoord
-# als in backend/.env.
-docker compose up -d --wait
-cd backend
+Stop de lokale omgeving met:
 
-python -m alembic upgrade head
-
-uvicorn app.main:app --reload
+```bash
+docker compose down
 ```
 
 ## Docker: frontend dependencies vernieuwen
 
 De frontend gebruikt een persistent Docker-volume voor `node_modules`. Wanneer `frontend/package.json` of `frontend/package-lock.json` verandert, moet dit volume opnieuw worden aangemaakt zodat de container de actuele dependencies gebruikt.
 
-Stop eerst de lokale Docker-omgeving:
+Verwijder het bestaande `node_modules`-volume via Docker Compose:
 
 ```powershell
-docker compose down
+docker compose rm -s -f -v frontend
 ```
 
-Verwijder vervolgens het frontend dependency-volume:
+Bouw en start daarna de frontend opnieuw:
 
 ```powershell
-docker volume rm ai-customer-support-platform_frontend_node_modules
+docker compose up -d --build frontend
 ```
 
-Bouw en start daarna de Docker-omgeving opnieuw:
-
-```powershell
-docker compose up -d --build
-```
-
-Hierbij wordt alleen het volume voor de frontenddependencies opnieuw aangemaakt. Het PostgreSQL-volume blijft behouden.
+Docker Compose maakt het benodigde `node_modules`-volume automatisch opnieuw aan op basis van het huidige Compose-project. Het PostgreSQL-volume blijft hierbij behouden.
 
 ---
 
