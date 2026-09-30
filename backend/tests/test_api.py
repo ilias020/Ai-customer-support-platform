@@ -122,3 +122,6 @@ def test_workspace_create_schema():
 
     assert workspace.name == "Nimbus"
     assert workspace.slug == "nimbus"
+
+def test_ci_failure():
+    assert False, "Intentional CI test failure"
