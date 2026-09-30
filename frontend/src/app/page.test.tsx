@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import Home from './page';
 
-const invalidValue: any = "ci-lint-test";
+const invalidType: string = 123;
 
 describe('Home', () => {
   it('toont de Nimbus-titel', () => {
