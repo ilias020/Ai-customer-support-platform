@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import Home from './page';
 
+const invalidValue: any = "ci-lint-test";
+
 describe('Home', () => {
   it('toont de Nimbus-titel', () => {
     render(<Home />);
