@@ -5,16 +5,10 @@ on:
     branches:
       - development
       - main
-    paths:
-      - "frontend/**"
-      - ".github/workflows/frontend-ci.yml"
   push:
     branches:
       - development
       - main
-    paths:
-      - "frontend/**"
-      - ".github/workflows/frontend-ci.yml"
 
 permissions:
   contents: read
