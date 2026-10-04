@@ -17,6 +17,8 @@ if config.config_file_name is not None:
 from app.database.base import Base
 from app.core.config import settings
 from app.database.alembic import escape_alembic_config_value
+from app.modules.auth.models import UserSession  # noqa: F401
+from app.modules.users.models import User  # noqa: F401
 from app.modules.workspaces.models import Workspace  # noqa: F401
 
 config.set_main_option(
