@@ -61,7 +61,9 @@ def test_sensitive_configuration_is_excluded_from_output():
         environment="testing",
         database_url="postgresql+psycopg://user:database-secret@localhost/nimbus",
         claude_api_key="provider-secret",
-        jwt_secret_key="jwt-secret",
+        jwt_secret_key="jwt-secret-for-output-test-0000000000",
+        refresh_token_hash_key="refresh-hash-secret-for-output-test-0000",
+        _env_file=None,
     )
 
     rendered_settings = repr(test_settings)
@@ -70,9 +72,11 @@ def test_sensitive_configuration_is_excluded_from_output():
     assert "database-secret" not in rendered_settings
     assert "provider-secret" not in rendered_settings
     assert "jwt-secret" not in rendered_settings
+    assert "refresh-hash-secret" not in rendered_settings
     assert "database_url" not in dumped_settings
     assert "claude_api_key" not in dumped_settings
     assert "jwt_secret_key" not in dumped_settings
+    assert "refresh_token_hash_key" not in dumped_settings
 
 
 def test_unhandled_exception_returns_safe_response():
@@ -86,7 +90,13 @@ def test_unhandled_exception_returns_safe_response():
     response = test_client.get("/test-error")
 
     assert response.status_code == 500
-    assert response.json() == {"detail": "Internal server error."}
+    assert response.json() == {
+        "error": {
+            "code": "INTERNAL_SERVER_ERROR",
+            "message": "An unexpected error occurred.",
+        },
+        "request_id": response.headers["X-Request-ID"],
+    }
     assert "sensitive technical detail" not in response.text
 
 

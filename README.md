@@ -147,7 +147,22 @@ DATABASE_URL=postgresql+psycopg://nimbus:<postgres_password>@127.0.0.1:5432/ai_c
 TEST_DATABASE_URL=postgresql+psycopg://nimbus:<postgres_password>@127.0.0.1:5432/ai_customer_support_test
 CLAUDE_API_KEY=<claude_api_key>
 JWT_SECRET_KEY=<jwt_secret_key>
+REFRESH_TOKEN_HASH_KEY=<refresh_token_hash_key>
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+REFRESH_TOKEN_EXPIRE_DAYS=30
+CORS_ALLOWED_ORIGINS=http://localhost:3000
 ```
+
+`JWT_SECRET_KEY` en `REFRESH_TOKEN_HASH_KEY` zijn verplicht, moeten minimaal 32 tekens
+bevatten en moeten van elkaar verschillen. De backend start niet wanneer deze ontbreken.
+Genereer per omgeving afzonderlijke willekeurige waarden, bijvoorbeeld met:
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+`CORS_ALLOWED_ORIGINS` bevat een kommagescheiden lijst met expliciete frontend-origins.
+Een wildcard (`*`) wordt geweigerd.
 
 Maak daarnaast in de projectroot een `.env` voor Docker Compose. Gebruik voor
 `POSTGRES_PASSWORD` dezelfde waarde als `<postgres_password>` in `DATABASE_URL`.
@@ -157,7 +172,14 @@ POSTGRES_DB=ai_customer_support
 POSTGRES_USER=nimbus
 POSTGRES_PASSWORD=<postgres_password>
 DOCKER_DATABASE_URL=postgresql+psycopg://nimbus:<url_encoded_postgres_password>@postgres:5432/ai_customer_support
+JWT_SECRET_KEY=<jwt_secret_key>
+REFRESH_TOKEN_HASH_KEY=<refresh_token_hash_key>
+CORS_ALLOWED_ORIGINS=http://localhost:3000
 ```
+
+Docker Compose geeft `JWT_SECRET_KEY`, `REFRESH_TOKEN_HASH_KEY` en `CORS_ALLOWED_ORIGINS`
+door aan de backend-container. Compose stopt met een melding wanneer een van de
+verplichte secrets ontbreekt.
 
 PostgreSQL gebruikt lokaal vast poort `5432`. De optie `--wait` wacht totdat
 PostgreSQL gezond is voordat de Alembic-migraties worden uitgevoerd.
