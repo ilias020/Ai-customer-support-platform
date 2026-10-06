@@ -129,11 +129,16 @@ Voor zowel de frontend als backend wordt gebruikgemaakt van een `.env` bestand.
 
 ## Frontend
 
-Maak in de map `frontend` een `.env.local` bestand aan.
+Maak in de map `frontend` een `.env.local` bestand aan op basis van `frontend/.env.example`.
 
 ```env
-NEXT_PUBLIC_API_URL=<backend_url>
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
+
+`NEXT_PUBLIC_API_URL` bevat alleen de backend-origin, zonder `/api`; de frontend voegt de
+API-paden zelf toe (bijvoorbeeld `/api/auth/login`). Deze waarde wordt tijdens de build in de
+frontend opgenomen en is dus publiek: zet hier nooit secrets in. Binnen Docker Compose wordt deze
+waarde al door `docker-compose.yml` gezet.
 
 ## Backend
 
