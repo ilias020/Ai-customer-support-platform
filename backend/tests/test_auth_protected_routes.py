@@ -376,13 +376,19 @@ def test_login_and_refresh_are_public(api_client, create_user):
 
 
 def test_public_endpoints_do_not_require_current_user():
-    application = create_app()
+    # Included routers are nested in `app.routes`, so the generated OpenAPI schema is used:
+    # every route that depends on `get_current_user` declares the HTTPBearer security scheme.
+    paths = create_app().openapi()["paths"]
 
-    for route in application.routes:
-        path = getattr(route, "path", "")
-        if path in {"/api/health", "/api/auth/login", "/api/auth/refresh"}:
-            dependency_calls = {dep.call for dep in route.dependant.dependencies}
-            assert dependencies.get_current_user not in dependency_calls
+    for path, method in [
+        ("/api/health", "get"),
+        ("/api/auth/login", "post"),
+        ("/api/auth/refresh", "post"),
+    ]:
+        assert "security" not in paths[path][method]
+
+    # Control: a protected route is detected, so the check above cannot pass vacuously.
+    assert paths["/api/users/me"]["get"]["security"] == [{"HTTPBearer": []}]
 
 
 # Token decoding unit tests
