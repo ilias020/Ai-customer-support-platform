@@ -6,10 +6,11 @@ import { type FormEvent, useRef, useState } from 'react';
 import { Alert, Button, Logo, TextField } from '../../../components/ui';
 import { login, type LoginErrorKind } from '../api/login';
 import { LOGIN_ERROR_MESSAGES } from '../messages';
+import { DEFAULT_AUTHENTICATED_ROUTE, getPostLoginRedirect } from '../navigation';
 import { setAccessToken } from '../session/accessToken';
 import { type LoginFieldErrors, validateLoginForm } from '../validation';
 
-export const POST_LOGIN_REDIRECT = '/dashboard';
+export const POST_LOGIN_REDIRECT = DEFAULT_AUTHENTICATED_ROUTE;
 const PASSWORD_MAX_LENGTH = 1024;
 
 const trustItems = [
@@ -72,7 +73,9 @@ export function LoginForm() {
 
     if (result.ok) {
       setAccessToken(result.accessToken);
-      router.replace(POST_LOGIN_REDIRECT);
+      // Returns to the protected page that was originally requested (`?next=`), if it is a safe
+      // internal path; otherwise to the default route.
+      router.replace(getPostLoginRedirect(window.location.search));
       return;
     }
 

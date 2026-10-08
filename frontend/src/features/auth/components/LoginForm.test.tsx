@@ -322,4 +322,34 @@ describe('LoginForm', () => {
       }
     });
   });
+
+  describe('return to the originally requested page', () => {
+    afterEach(() => {
+      window.history.replaceState(null, '', '/');
+    });
+
+    it('redirects to the internal path from the next parameter', async () => {
+      window.history.replaceState(null, '', '/login?next=%2Fdashboard%3Ftab%3Dopen');
+      fetchMock.mockResolvedValue(jsonResponse(200, successBody));
+
+      await fillAndSubmit();
+
+      await waitFor(() => expect(replaceMock).toHaveBeenCalledWith('/dashboard?tab=open'));
+    });
+
+    it.each([
+      'https%3A%2F%2Fevil.example',
+      '%2F%2Fevil.example',
+      '%2F%5Cevil.example',
+      'javascript%3Aalert(1)',
+      '%2Flogin',
+    ])('ignores the unsafe next parameter %s', async (next) => {
+      window.history.replaceState(null, '', `/login?next=${next}`);
+      fetchMock.mockResolvedValue(jsonResponse(200, successBody));
+
+      await fillAndSubmit();
+
+      await waitFor(() => expect(replaceMock).toHaveBeenCalledWith('/dashboard'));
+    });
+  });
 });

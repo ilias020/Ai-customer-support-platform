@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import LoginPage from './page';
 
@@ -8,6 +8,20 @@ vi.mock('next/navigation', () => ({
 }));
 
 describe('LoginPage', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('is public: renders without a session and without a session check', () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<LoginPage />);
+
+    expect(screen.getByRole('button', { name: 'Inloggen' })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('renders the login form inside the main landmark', () => {
     render(<LoginPage />);
 

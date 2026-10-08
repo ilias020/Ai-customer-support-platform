@@ -6,8 +6,8 @@ export const metadata: Metadata = {
 
 /*
  * Temporary redirect destination after a successful login (Issue #1).
- * The real Dashboard implementation is out of scope for Issue #1 and belongs to its own story:
- * no dashboard features, API calls, route guard or current-user data here.
+ * Protected by the (protected) route group layout (Issue #18). The real Dashboard implementation
+ * belongs to its own story: no dashboard features, API calls or current-user data here.
  */
 export default function DashboardPage() {
   return (
