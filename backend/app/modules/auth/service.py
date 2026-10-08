@@ -13,15 +13,21 @@ from app.core.security import (
     verify_dummy_password,
     verify_password,
 )
-from app.modules.auth.exceptions import InvalidCredentialsError
-from app.modules.auth.repository import create_user_session
-from app.modules.users.models import UserStatus
+from app.modules.auth.exceptions import InvalidCredentialsError, InvalidRefreshTokenError
+from app.modules.auth.repository import create_user_session, rotate_user_session_token
+from app.modules.users.models import User, UserStatus
 from app.modules.users.repository import get_user_by_email
 
 logger = logging.getLogger(__name__)
 
 LOGIN_SUCCESS = "LOGIN_SUCCESS"
 LOGIN_FAILED = "LOGIN_FAILED"
+REFRESH_SUCCESS = "REFRESH_SUCCESS"
+REFRESH_FAILED = "REFRESH_FAILED"
+
+# Opaque refresh tokens are generated with 32 random bytes (43 URL-safe characters).
+# Clearly malformed cookie values are rejected without a database lookup.
+REFRESH_TOKEN_MAX_LENGTH = 256
 
 
 @dataclass(frozen=True)
@@ -30,6 +36,7 @@ class LoginResult:
     expires_in: int
     refresh_token: str
     refresh_token_expires_at: datetime
+    refresh_token_max_age: int
 
 
 def log_login_failed(failure_reason: str) -> None:
@@ -96,4 +103,76 @@ def login(db: Session, *, email: str, password: str) -> LoginResult:
         expires_in=settings.access_token_expire_minutes * 60,
         refresh_token=refresh_token,
         refresh_token_expires_at=refresh_token_expires_at,
+        refresh_token_max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+    )
+
+
+def log_refresh_failed(failure_reason: str) -> None:
+    logger.warning(
+        REFRESH_FAILED,
+        extra={
+            "event": REFRESH_FAILED,
+            "failure_reason": failure_reason,
+            "request_id": get_request_id(),
+        },
+    )
+
+
+def refresh_session(db: Session, *, refresh_token: str | None) -> LoginResult:
+    """Issues a new access token and rotates the refresh token of an active UserSession.
+
+    The session keeps its original `expires_at`: refreshing never extends the maximum session
+    lifetime that was set when the session was created.
+    """
+    if not refresh_token or len(refresh_token) > REFRESH_TOKEN_MAX_LENGTH:
+        log_refresh_failed("MISSING_OR_MALFORMED_TOKEN")
+        raise InvalidRefreshTokenError()
+
+    now = datetime.now(UTC)
+    new_refresh_token = generate_refresh_token()
+
+    try:
+        rotated_session = rotate_user_session_token(
+            db,
+            current_token_hash=hash_refresh_token(refresh_token),
+            new_token_hash=hash_refresh_token(new_refresh_token),
+            now=now,
+        )
+
+        if rotated_session is None:
+            db.rollback()
+            log_refresh_failed("INVALID_TOKEN")
+            raise InvalidRefreshTokenError()
+
+        user = db.get(User, rotated_session.user_id)
+        if user is None or user.status != UserStatus.ACTIVE:
+            db.rollback()
+            log_refresh_failed("INACTIVE_USER")
+            raise InvalidRefreshTokenError()
+
+        access_token = create_access_token(str(rotated_session.user_id), issued_at=now)
+        db.commit()
+    except InvalidRefreshTokenError:
+        raise
+    except Exception:
+        db.rollback()
+        log_refresh_failed("INTERNAL_ERROR")
+        raise
+
+    logger.info(
+        REFRESH_SUCCESS,
+        extra={
+            "event": REFRESH_SUCCESS,
+            "user_id": str(rotated_session.user_id),
+            "session_id": str(rotated_session.id),
+            "request_id": get_request_id(),
+        },
+    )
+
+    return LoginResult(
+        access_token=access_token,
+        expires_in=settings.access_token_expire_minutes * 60,
+        refresh_token=new_refresh_token,
+        refresh_token_expires_at=rotated_session.expires_at,
+        refresh_token_max_age=int((rotated_session.expires_at - now).total_seconds()),
     )
