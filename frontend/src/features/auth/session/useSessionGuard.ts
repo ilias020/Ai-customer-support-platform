@@ -1,70 +1,58 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { getCurrentPath, redirectToLogin } from '../navigation';
-import { getAccessToken } from './accessToken';
-import { refreshSession } from './refreshSession';
+import { useCallback, useEffect, useState } from 'react';
+import { type CurrentUser, fetchCurrentUser } from '../api/currentUser';
 
 /**
- * - `checking`:      the initial session check is running (also the server-rendered state).
- * - `authenticated`: an access token is available in memory.
- * - `redirecting`:   the backend rejected the session; the user is sent to the login page.
- * - `error`:         the session could not be verified (server or network error).
+ * - `loading`:         the session and current user are being verified (also the server render).
+ * - `authenticated`:   `GET /api/users/me` confirmed the current user.
+ * - `unauthenticated`: the backend rejected the session; the user is sent to the login page.
+ * - `error`:           the user could not be verified (server, network or invalid response).
  */
-export type SessionGuardStatus = 'checking' | 'authenticated' | 'redirecting' | 'error';
+export type SessionGuardStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
 
-export type SessionGuard = {
-  status: SessionGuardStatus;
-  /** Runs the session check again; only meant for an explicit user action after an error. */
+export type SessionGuardState =
+  | { status: 'authenticated'; user: CurrentUser }
+  | { status: Exclude<SessionGuardStatus, 'authenticated'>; user: null };
+
+export type SessionGuard = SessionGuardState & {
+  /** Runs the verification again; only meant for an explicit user action after an error. */
   retry: () => void;
 };
 
 /**
- * Determines whether protected content may be shown.
+ * Determines whether protected content may be shown and which user is authenticated.
  *
- * An access token in memory is used as is: the backend validates it (and the current user
- * status) on every protected API request. Without a token, e.g. after a page reload or direct
- * navigation, the session is restored once through the HttpOnly refresh cookie using the shared,
- * single-flight `refreshSession()`. Server and network errors are never retried automatically.
+ * An access token in memory alone is not sufficient: the current user is always confirmed by
+ * `GET /api/users/me`. That request goes through `authenticatedFetch`, which restores a missing
+ * token via the HttpOnly refresh cookie (e.g. after a page reload), renews an expired token and
+ * retries once. When the backend rejects the session, `authenticatedFetch` clears the token and
+ * redirects to login with the current page as return path. Server, network and invalid-response
+ * errors are never retried automatically.
  */
 export function useSessionGuard(): SessionGuard {
-  // Always start in `checking`: the server render and the first client render must match, and
-  // the in-memory token is only read in the browser.
-  const [status, setStatus] = useState<SessionGuardStatus>('checking');
+  // Always start in `loading`: the server render and the first client render must match.
+  const [state, setState] = useState<SessionGuardState>({ status: 'loading', user: null });
   const [attempt, setAttempt] = useState(0);
-  const redirectedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
 
     async function verifySession() {
-      if (getAccessToken()) {
-        setStatus('authenticated');
-        return;
-      }
+      const result = await fetchCurrentUser();
 
-      setStatus('checking');
-      const result = await refreshSession();
-
+      // Ignore results for an unmounted guard or a superseded attempt.
       if (!active) {
         return;
       }
 
       if (result.ok) {
-        setStatus('authenticated');
-        return;
+        setState({ status: 'authenticated', user: result.user });
+      } else if (result.error === 'unauthenticated') {
+        setState({ status: 'unauthenticated', user: null });
+      } else {
+        setState({ status: 'error', user: null });
       }
-
-      if (result.error === 'unauthenticated') {
-        setStatus('redirecting');
-        if (!redirectedRef.current) {
-          redirectedRef.current = true;
-          redirectToLogin(getCurrentPath());
-        }
-        return;
-      }
-
-      setStatus('error');
     }
 
     void verifySession();
@@ -75,8 +63,9 @@ export function useSessionGuard(): SessionGuard {
   }, [attempt]);
 
   const retry = useCallback(() => {
+    setState({ status: 'loading', user: null });
     setAttempt((current) => current + 1);
   }, []);
 
-  return { status, retry };
+  return { ...state, retry };
 }

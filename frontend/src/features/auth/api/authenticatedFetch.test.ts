@@ -9,6 +9,7 @@ import {
 
 vi.mock('../navigation', () => ({
   LOGIN_ROUTE: '/login',
+  getCurrentPath: () => '/dashboard?tab=open',
   redirectToLogin: vi.fn(),
 }));
 
@@ -137,6 +138,7 @@ describe('authenticatedFetch', () => {
 
     expect(getAccessToken()).toBeNull();
     expect(redirectToLogin).toHaveBeenCalledTimes(1);
+    expect(redirectToLogin).toHaveBeenCalledWith('/dashboard?tab=open');
     expect(callsTo(REFRESH_URL)).toHaveLength(1);
     expect(callsTo(PROTECTED_URL)).toHaveLength(1);
   });

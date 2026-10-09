@@ -7,7 +7,8 @@ import { Alert, Button, Logo, TextField } from '../../../components/ui';
 import { login, type LoginErrorKind } from '../api/login';
 import { LOGIN_ERROR_MESSAGES } from '../messages';
 import { DEFAULT_AUTHENTICATED_ROUTE, getPostLoginRedirect } from '../navigation';
-import { setAccessToken } from '../session/accessToken';
+import { startSession } from '../session/accessToken';
+import { runExclusiveAcrossTabs } from '../session/refreshSession';
 import { type LoginFieldErrors, validateLoginForm } from '../validation';
 
 export const POST_LOGIN_REDIRECT = DEFAULT_AUTHENTICATED_ROUTE;
@@ -69,10 +70,17 @@ export function LoginForm() {
     submittingRef.current = true;
     setIsSubmitting(true);
 
-    const result = await login({ email: email.trim(), password });
+    // The login holds the same lock as token refreshes: it waits for a running refresh to finish
+    // and stores the new session before a queued refresh can run with the new cookie.
+    const result = await runExclusiveAcrossTabs(async () => {
+      const loginResult = await login({ email: email.trim(), password });
+      if (loginResult.ok) {
+        startSession(loginResult.accessToken);
+      }
+      return loginResult;
+    });
 
     if (result.ok) {
-      setAccessToken(result.accessToken);
       // Returns to the protected page that was originally requested (`?next=`), if it is a safe
       // internal path; otherwise to the default route.
       router.replace(getPostLoginRedirect(window.location.search));

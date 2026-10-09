@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LOGIN_ERROR_MESSAGES } from '../messages';
-import { clearAccessToken, getAccessToken } from '../session/accessToken';
+import { clearAccessToken, getAccessToken, getSessionVersion } from '../session/accessToken';
 import { LOGIN_VALIDATION_MESSAGES } from '../validation';
 import { LoginForm } from './LoginForm';
 
@@ -199,10 +199,13 @@ describe('LoginForm', () => {
     it('keeps the access token in memory and redirects to the dashboard', async () => {
       fetchMock.mockResolvedValue(jsonResponse(200, successBody));
       const localSetItem = vi.spyOn(Storage.prototype, 'setItem');
+      const sessionVersionBeforeLogin = getSessionVersion();
 
       await fillAndSubmit();
 
       await waitFor(() => expect(replaceMock).toHaveBeenCalledWith('/dashboard'));
+      // A login starts a new session, so pending requests of a previous session are discarded.
+      expect(getSessionVersion()).toBe(sessionVersionBeforeLogin + 1);
       expect(getAccessToken()).toBe('access-token-value');
       expect(localSetItem).not.toHaveBeenCalled();
       expect(window.localStorage.length).toBe(0);
