@@ -1,7 +1,7 @@
 import { requestTokenRefresh, type RefreshResult } from '../api/refresh';
 import { clearAccessToken, setAccessToken } from './accessToken';
 
-/** Name of the Web Lock that serializes refreshes across browser tabs of this origin. */
+/** Name of the Web Lock that serializes refreshes and logins across browser tabs of this origin. */
 export const REFRESH_LOCK_NAME = 'nimbus-auth-refresh';
 
 let refreshInFlight: Promise<RefreshResult> | null = null;
@@ -20,22 +20,27 @@ async function performRefresh(): Promise<RefreshResult> {
   return result;
 }
 
-async function runExclusiveAcrossTabs(task: () => Promise<RefreshResult>): Promise<RefreshResult> {
-  // The backend rotates the refresh token on every refresh, so two tabs refreshing at the same
-  // time with the same cookie would make one of them fail. The Web Locks API runs refreshes of
-  // all tabs one after another; each refresh then sends the cookie rotated by the previous one.
+/**
+ * Runs `task` while holding the Web Lock that is shared by all tabs of this origin.
+ *
+ * The backend rotates the refresh token on every refresh and sets a new refresh cookie on every
+ * login. Running refreshes and logins one after another ensures that each request sends the
+ * cookie set by the previous one, and that a slow refresh can never overwrite the cookie (or the
+ * access token) of a newer login with that of the previous session.
+ */
+export async function runExclusiveAcrossTabs<T>(task: () => Promise<T>): Promise<T> {
   const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
 
   if (!locks) {
     return task();
   }
 
-  let result: RefreshResult | undefined;
+  let result: T | undefined;
   await locks.request(REFRESH_LOCK_NAME, async () => {
     result = await task();
   });
 
-  return result as RefreshResult;
+  return result as T;
 }
 
 /**

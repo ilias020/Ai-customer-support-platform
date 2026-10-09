@@ -1,5 +1,5 @@
 import { getApiBaseUrl } from '../../../lib/api/config';
-import { redirectToLogin } from '../navigation';
+import { getCurrentPath, redirectToLogin } from '../navigation';
 import { clearAccessToken, getAccessToken } from '../session/accessToken';
 import { refreshSession } from '../session/refreshSession';
 
@@ -24,7 +24,8 @@ export class SessionRefreshError extends Error {
 
 function endSession(): never {
   clearAccessToken();
-  redirectToLogin();
+  // The current page is passed along so the user can return to it after logging in (Issue #18).
+  redirectToLogin(getCurrentPath());
   throw new UnauthenticatedError();
 }
 
