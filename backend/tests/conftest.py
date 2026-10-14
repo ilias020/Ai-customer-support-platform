@@ -28,13 +28,18 @@ os.environ.setdefault("REFRESH_TOKEN_HASH_KEY", "test-only-refresh-hash-placehol
 
 @pytest.fixture(autouse=True)
 def reset_auth_rate_limiters():
-    from app.modules.auth.router import login_rate_limiter, refresh_rate_limiter
+    from app.modules.auth.router import (
+        login_rate_limiter,
+        refresh_rate_limiter,
+        register_rate_limiter,
+    )
 
-    login_rate_limiter.reset()
-    refresh_rate_limiter.reset()
+    limiters = (login_rate_limiter, refresh_rate_limiter, register_rate_limiter)
+    for limiter in limiters:
+        limiter.reset()
     yield
-    login_rate_limiter.reset()
-    refresh_rate_limiter.reset()
+    for limiter in limiters:
+        limiter.reset()
 
 
 @pytest.fixture

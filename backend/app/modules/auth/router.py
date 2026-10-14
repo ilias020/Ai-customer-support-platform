@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, Request, Response
+from fastapi import APIRouter, Cookie, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -9,7 +9,7 @@ from app.core.exceptions import RateLimitExceededError
 from app.core.rate_limit import InMemoryRateLimiter
 from app.database.session import get_db
 from app.modules.auth import service
-from app.modules.auth.schemas import LoginRequest, TokenResponse
+from app.modules.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
 
 REFRESH_TOKEN_COOKIE_NAME = "nimbus_refresh_token"
 REFRESH_TOKEN_COOKIE_PATH = "/api/auth"
@@ -22,6 +22,9 @@ LOGIN_RATE_LIMIT_WINDOW_SECONDS = 60
 REFRESH_RATE_LIMIT_ATTEMPTS = 30
 REFRESH_RATE_LIMIT_WINDOW_SECONDS = 60
 
+REGISTER_RATE_LIMIT_ATTEMPTS = 5
+REGISTER_RATE_LIMIT_WINDOW_SECONDS = 60
+
 login_rate_limiter = InMemoryRateLimiter(
     max_attempts=LOGIN_RATE_LIMIT_ATTEMPTS,
     window_seconds=LOGIN_RATE_LIMIT_WINDOW_SECONDS,
@@ -29,6 +32,11 @@ login_rate_limiter = InMemoryRateLimiter(
 refresh_rate_limiter = InMemoryRateLimiter(
     max_attempts=REFRESH_RATE_LIMIT_ATTEMPTS,
     window_seconds=REFRESH_RATE_LIMIT_WINDOW_SECONDS,
+)
+
+register_rate_limiter = InMemoryRateLimiter(
+    max_attempts=REGISTER_RATE_LIMIT_ATTEMPTS,
+    window_seconds=REGISTER_RATE_LIMIT_WINDOW_SECONDS,
 )
 
 router = APIRouter()
@@ -54,6 +62,13 @@ def enforce_refresh_rate_limit(request: Request) -> None:
         raise RateLimitExceededError(retry_after_seconds=retry_after)
 
 
+def enforce_register_rate_limit(request: Request) -> None:
+    retry_after = register_rate_limiter.hit(client_ip_for(request))
+    if retry_after is not None:
+        service.log_register_failed("RATE_LIMITED")
+        raise RateLimitExceededError(retry_after_seconds=retry_after)
+
+
 def set_refresh_token_cookie(
     response: Response,
     refresh_token: str,
@@ -70,6 +85,34 @@ def set_refresh_token_cookie(
         httponly=True,
         samesite="lax",
     )
+
+
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(enforce_register_rate_limit)],
+)
+def register(
+    payload: RegisterRequest,
+    response: Response,
+    db: Annotated[Session, Depends(get_db)],
+) -> TokenResponse:
+    result = service.register(
+        db,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        email=payload.email,
+        password=payload.password,
+        workspace_name=payload.workspace_name,
+    )
+    set_refresh_token_cookie(
+        response,
+        result.refresh_token,
+        result.refresh_token_expires_at,
+        result.refresh_token_max_age,
+    )
+    return TokenResponse(access_token=result.access_token, expires_in=result.expires_in)
 
 
 @router.post(

@@ -9,6 +9,12 @@ class InvalidCredentialsError(AppError):
     message = "Invalid email or password."
 
 
+class EmailAlreadyExistsError(AppError):
+    status_code = status.HTTP_409_CONFLICT
+    code = "EMAIL_ALREADY_EXISTS"
+    message = "An account with this email address already exists."
+
+
 class InvalidRefreshTokenError(AppError):
     status_code = status.HTTP_401_UNAUTHORIZED
     code = "INVALID_REFRESH_TOKEN"
