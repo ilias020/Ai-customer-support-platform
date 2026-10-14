@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { LOGIN_ERROR_MESSAGES } from '../messages';
 import { clearAccessToken, getAccessToken, getSessionVersion } from '../session/accessToken';
 import { LOGIN_VALIDATION_MESSAGES } from '../validation';
@@ -87,6 +86,21 @@ describe('LoginForm', () => {
   });
 
   describe('features of other stories', () => {
+    it('uses the same e-mail placeholder as the registration form', () => {
+      const { emailInput } = setup();
+
+      expect(emailInput).toHaveAttribute('placeholder', 'naam@bedrijf.nl');
+    });
+
+    it('does not show the registration password requirements', async () => {
+      const { user, passwordInput } = setup();
+
+      await user.type(passwordInput, 'kort');
+
+      expect(screen.queryByText('Je wachtwoord moet bevatten:')).not.toBeInTheDocument();
+      expect(screen.queryByRole('list', { name: /wachtwoord/i })).not.toBeInTheDocument();
+    });
+
     it('shows Remember Me as a disabled checkbox', () => {
       setup();
 
@@ -99,13 +113,21 @@ describe('LoginForm', () => {
       expect(screen.getByRole('button', { name: 'Inloggen met Google' })).toBeDisabled();
     });
 
-    it('shows forgot password and registration as plain, non-interactive text', () => {
+    it('shows forgot password as plain, non-interactive text', () => {
       setup();
 
       expect(screen.getByText('Wachtwoord vergeten?').tagName).toBe('SPAN');
-      expect(screen.getByText('Maak een account aan').tagName).toBe('SPAN');
-      expect(screen.queryByRole('link')).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /vergeten|account/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /vergeten/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /vergeten/i })).not.toBeInTheDocument();
+    });
+
+    it('links "Maak een account aan" to the registration page (Issue #11)', () => {
+      setup();
+
+      expect(screen.getByRole('link', { name: 'Maak een account aan' })).toHaveAttribute(
+        'href',
+        '/register',
+      );
     });
 
     it('keeps the disabled elements out of the keyboard tab order', async () => {
@@ -119,6 +141,8 @@ describe('LoginForm', () => {
       expect(screen.getByRole('button', { name: 'Wachtwoord tonen' })).toHaveFocus();
       await user.tab();
       expect(submitButton).toHaveFocus();
+      await user.tab();
+      expect(screen.getByRole('link', { name: 'Maak een account aan' })).toHaveFocus();
       await user.tab();
       expect(document.body).toHaveFocus();
     });

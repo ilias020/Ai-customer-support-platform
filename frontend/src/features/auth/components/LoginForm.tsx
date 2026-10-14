@@ -1,15 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, useRef, useState } from 'react';
-
+import { type SubmitEvent, useRef, useState } from 'react';
 import { Alert, Button, Logo, TextField } from '../../../components/ui';
 import { login, type LoginErrorKind } from '../api/login';
 import { LOGIN_ERROR_MESSAGES } from '../messages';
-import { DEFAULT_AUTHENTICATED_ROUTE, getPostLoginRedirect } from '../navigation';
+import { DEFAULT_AUTHENTICATED_ROUTE, getPostLoginRedirect, REGISTER_ROUTE } from '../navigation';
 import { startSession } from '../session/accessToken';
 import { runExclusiveAcrossTabs } from '../session/refreshSession';
 import { type LoginFieldErrors, validateLoginForm } from '../validation';
+import { EyeIcon } from './EyeIcon';
 
 export const POST_LOGIN_REDIRECT = DEFAULT_AUTHENTICATED_ROUTE;
 const PASSWORD_MAX_LENGTH = 1024;
@@ -19,25 +20,6 @@ const trustItems = [
   { full: 'Veilige sessies', short: 'Sessies' },
   { full: 'Beveiligde toegang', short: 'Beveiligd' },
 ];
-
-function EyeIcon({ crossed }: { crossed: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-      <circle cx="12" cy="12" r="3" />
-      {crossed ? <path d="M4 4l16 16" /> : null}
-    </svg>
-  );
-}
 
 export function LoginForm() {
   const router = useRouter();
@@ -51,7 +33,7 @@ export function LoginForm() {
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (submittingRef.current) {
@@ -117,7 +99,7 @@ export function LoginForm() {
           name="email"
           type="email"
           label="E-mailadres"
-          placeholder="jij@bedrijf.nl"
+          placeholder="naam@bedrijf.nl"
           autoComplete="email"
           inputMode="email"
           required
@@ -197,10 +179,14 @@ export function LoginForm() {
         Inloggen met Google
       </Button>
 
-      {/* Registration is a separate story: shown as plain text, not as a link. */}
       <p className="text-center text-xs leading-4 text-secondary-500 md:text-[13px] md:leading-[17px]">
         Nog geen account?{' '}
-        <span className="font-semibold text-neutral-400">Maak een account aan</span>
+        <Link
+          href={REGISTER_ROUTE}
+          className="rounded-sm font-semibold text-primary-500 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+        >
+          Maak een account aan
+        </Link>
       </p>
 
       <ul className="flex flex-wrap items-center justify-center gap-3 text-[10px] leading-[13px] text-neutral-400 md:gap-4 md:text-[11px] md:leading-[14px]">
