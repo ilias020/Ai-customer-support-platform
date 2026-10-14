@@ -1,5 +1,7 @@
 export const LOGIN_ROUTE = '/login';
 
+export const REGISTER_ROUTE = '/register';
+
 /** Default destination after login when no (safe) return path was requested. */
 export const DEFAULT_AUTHENTICATED_ROUTE = '/dashboard';
 
