@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-type ButtonVariant = 'primary' | 'outline';
+type ButtonVariant = 'primary' | 'outline' | 'destructive';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -14,6 +14,9 @@ const variantClasses: Record<ButtonVariant, string> = {
     'bg-primary-500 text-white hover:bg-primary-700 focus-visible:outline-primary-500 disabled:hover:bg-primary-500',
   outline:
     'border border-border bg-surface text-secondary-900 hover:bg-background focus-visible:outline-primary-500 disabled:hover:bg-surface',
+  // Design System "Button/destructive": confirms an action that ends or removes something.
+  destructive:
+    'bg-error-500 text-white hover:bg-error-700 focus-visible:outline-error-500 disabled:hover:bg-error-500',
 };
 
 export function Button({

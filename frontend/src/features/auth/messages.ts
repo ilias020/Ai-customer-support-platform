@@ -29,3 +29,26 @@ export const REGISTER_ERROR_MESSAGES: Record<RegisterErrorKind, string> = {
 export function registrationWelcomeMessage(firstName: string): string {
   return `Welkom bij Nimbus, ${firstName}! Je account en workspace zijn aangemaakt.`;
 }
+
+export const LOGOUT_DIALOG_TEXT = {
+  title: 'Uitloggen bij Nimbus?',
+  description: 'Weet je zeker dat je wilt uitloggen? Je kunt op ieder moment opnieuw inloggen.',
+  cancel: 'Annuleren',
+  confirm: 'Uitloggen',
+  confirming: 'Uitloggen…',
+} as const;
+
+/**
+ * Errors where it is unknown whether the server ended the session. The user stays logged in on
+ * this device and can try again.
+ */
+export const LOGOUT_ERROR_MESSAGES = {
+  server: 'Uitloggen is niet gelukt door een fout bij de server. Probeer het opnieuw.',
+  network: 'Uitloggen is niet gelukt. Controleer je internetverbinding en probeer het opnieuw.',
+  unexpected: 'Uitloggen is niet gelukt. Probeer het opnieuw.',
+} as const;
+
+export const LOGOUT_NOTICE_MESSAGES = {
+  logged_out: 'Je bent succesvol uitgelogd.',
+  session_ended: 'Je sessie was al beëindigd. Log opnieuw in om verder te gaan.',
+} as const;
