@@ -20,7 +20,11 @@ from app.modules.auth.exceptions import (
     InvalidCredentialsError,
     InvalidRefreshTokenError,
 )
-from app.modules.auth.repository import create_user_session, rotate_user_session_token
+from app.modules.auth.repository import (
+    create_user_session,
+    revoke_user_session,
+    rotate_user_session_token,
+)
 from app.modules.users.models import User, UserStatus
 from app.modules.users.repository import create_user, get_user_by_email
 from app.modules.workspaces.models import Workspace, WorkspaceRole
@@ -39,6 +43,8 @@ REFRESH_SUCCESS = "REFRESH_SUCCESS"
 REFRESH_FAILED = "REFRESH_FAILED"
 REGISTER_SUCCESS = "REGISTER_SUCCESS"
 REGISTER_FAILED = "REGISTER_FAILED"
+SESSION_REVOKED = "SESSION_REVOKED"
+LOGOUT_FAILED = "LOGOUT_FAILED"
 
 # Unique indexes that registration relies on (see the Alembic migrations).
 USERS_EMAIL_UNIQUE_INDEX = "ix_users_email"
@@ -195,6 +201,60 @@ def refresh_session(db: Session, *, refresh_token: str | None) -> LoginResult:
         refresh_token=new_refresh_token,
         refresh_token_expires_at=rotated_session.expires_at,
         refresh_token_max_age=int((rotated_session.expires_at - now).total_seconds()),
+    )
+
+
+def log_logout_failed(failure_reason: str) -> None:
+    logger.warning(
+        LOGOUT_FAILED,
+        extra={
+            "event": LOGOUT_FAILED,
+            "failure_reason": failure_reason,
+            "request_id": get_request_id(),
+        },
+    )
+
+
+def logout(db: Session, *, refresh_token: str | None) -> None:
+    """Revokes the UserSession that belongs to `refresh_token` (the current session only).
+
+    The revocation is committed before this function returns. Missing, unknown, expired or
+    already revoked tokens raise `InvalidRefreshTokenError`; on any other error the transaction
+    is rolled back and the session stays unchanged.
+    """
+    if not refresh_token or len(refresh_token) > REFRESH_TOKEN_MAX_LENGTH:
+        log_logout_failed("MISSING_OR_MALFORMED_TOKEN")
+        raise InvalidRefreshTokenError()
+
+    try:
+        revoked_session = revoke_user_session(
+            db,
+            token_hash=hash_refresh_token(refresh_token),
+            now=datetime.now(UTC),
+        )
+
+        if revoked_session is None:
+            db.rollback()
+            log_logout_failed("INVALID_TOKEN")
+            raise InvalidRefreshTokenError()
+
+        db.commit()
+    except InvalidRefreshTokenError:
+        raise
+    except Exception:
+        db.rollback()
+        log_logout_failed("INTERNAL_ERROR")
+        raise
+
+    logger.info(
+        SESSION_REVOKED,
+        extra={
+            "event": SESSION_REVOKED,
+            "reason": "LOGOUT",
+            "user_id": str(revoked_session.user_id),
+            "session_id": str(revoked_session.id),
+            "request_id": get_request_id(),
+        },
     )
 
 
