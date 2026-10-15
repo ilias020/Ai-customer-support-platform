@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-
 import { LoginForm } from '../../features/auth/components/LoginForm';
 import {
   LoginIllustrationBand,
   LoginIllustrationPanel,
 } from '../../features/auth/components/LoginIllustration';
+import { LogoutNotice } from '../../features/auth/components/LogoutNotice';
 
 export const metadata: Metadata = {
   title: 'Inloggen — Nimbus',
@@ -32,6 +32,9 @@ export default function LoginPage() {
       <div className="hidden xl:block">
         <LoginIllustrationPanel />
       </div>
+
+      {/* One-time feedback after a logout (Issue #13). */}
+      <LogoutNotice />
     </div>
   );
 }
