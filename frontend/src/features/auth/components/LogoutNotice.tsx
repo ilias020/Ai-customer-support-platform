@@ -65,11 +65,13 @@ export function LogoutNotice() {
   }, []);
 
   return (
-    <div role="status" aria-live="polite">
+    // On mobile the region is moved to the top of the login page flow (see `mobileLayout`).
+    <div role="status" aria-live="polite" className="order-first md:order-none">
       {kind ? (
         <Snackbar
           variant={kind === 'logged_out' ? 'success' : 'info'}
           position="top"
+          mobileLayout="inline"
           onDismiss={dismiss}
         >
           {LOGOUT_NOTICE_MESSAGES[kind]}

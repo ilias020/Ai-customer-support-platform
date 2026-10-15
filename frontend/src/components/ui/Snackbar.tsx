@@ -15,31 +15,45 @@ const positionClasses: Record<SnackbarPosition, string> = {
   bottom: 'bottom-4 md:bottom-6',
 };
 
+/*
+ * `inline` (only with `position="top"`): below 768px the snackbar is part of the page flow at the
+ * top instead of floating over it, so it never covers the page header or branding on small
+ * screens. From 768px it floats like the overlay variant.
+ */
+const inlineTopClasses =
+  'flex justify-center px-4 pt-4 md:pointer-events-none md:fixed md:inset-x-4 md:top-6 md:z-50 md:px-0 md:pt-0';
+
 type SnackbarProps = {
   variant?: SnackbarVariant;
   /** Defaults to `bottom`. */
   position?: SnackbarPosition;
+  /** Mobile behaviour (< 768px). Defaults to `overlay`; `inline` is only used with `top`. */
+  mobileLayout?: 'overlay' | 'inline';
   children: ReactNode;
   onDismiss: () => void;
 };
 
 /**
  * Short, non-blocking feedback at the top or bottom of the screen, horizontally centered. It does
- * not cover the page content beyond its own size and can be dismissed. Render it inside an `aria-live`
- * region that already exists on the page, so screen readers announce it when it appears.
+ * not cover the page content beyond its own size and can be dismissed. Render it inside an
+ * `aria-live` region that already exists on the page, so screen readers announce it when it
+ * appears.
  */
 export function Snackbar({
   variant = 'success',
   position = 'bottom',
+  mobileLayout = 'overlay',
   children,
   onDismiss,
 }: SnackbarProps) {
   const styles = variantClasses[variant];
+  const wrapperClasses =
+    mobileLayout === 'inline' && position === 'top'
+      ? inlineTopClasses
+      : `pointer-events-none fixed inset-x-4 z-50 flex justify-center ${positionClasses[position]}`;
 
   return (
-    <div
-      className={`pointer-events-none fixed inset-x-4 z-50 flex justify-center ${positionClasses[position]}`}
-    >
+    <div className={wrapperClasses}>
       <div
         className={`pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-lg border bg-surface px-4 py-3 text-[13px] leading-[1.5] text-secondary-900 shadow-lg ${styles.border}`}
       >

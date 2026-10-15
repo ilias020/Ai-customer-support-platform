@@ -121,16 +121,22 @@ describe('LogoutNotice', () => {
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
-  it('shows the snackbar at the top, horizontally centered', () => {
+  it('shows the snackbar at the top: in the page flow on mobile, floating from tablet', () => {
     markLogoutNotice('logged_out');
     newPageLoad();
 
     render(<LogoutNotice />);
 
-    const container = screen.getByText(SUCCESS).closest('.fixed');
-    expect(container).not.toBeNull();
-    expect(container?.className).toMatch(/\btop-/);
-    expect(container?.className).not.toMatch(/\bbottom-/);
-    expect(container?.className).toContain('justify-center');
+    // Mobile: the live region moves to the top of the login page flow, so the snackbar pushes the
+    // content down instead of covering the logo.
+    expect(screen.getByRole('status').className).toContain('order-first');
+    const wrapper = screen.getByText(SUCCESS).parentElement?.parentElement;
+    expect(wrapper?.className).toContain('justify-center');
+    expect(wrapper?.className).toMatch(/(^|\s)pt-4(\s|$)/);
+    expect(wrapper?.className).not.toMatch(/(^|\s)fixed(\s|$)/);
+    // From 768px: floating at the top, horizontally centered.
+    expect(wrapper?.className).toContain('md:fixed');
+    expect(wrapper?.className).toContain('md:top-6');
+    expect(wrapper?.className).not.toMatch(/bottom-/);
   });
 });
