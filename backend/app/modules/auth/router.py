@@ -5,10 +5,11 @@ from fastapi import APIRouter, Cookie, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.exceptions import RateLimitExceededError
+from app.core.exceptions import RateLimitExceededError, error_response
 from app.core.rate_limit import InMemoryRateLimiter
 from app.database.session import get_db
 from app.modules.auth import service
+from app.modules.auth.exceptions import InvalidRefreshTokenError
 from app.modules.auth.schemas import LoginRequest, RegisterRequest, TokenResponse
 
 REFRESH_TOKEN_COOKIE_NAME = "nimbus_refresh_token"
@@ -69,6 +70,10 @@ def enforce_register_rate_limit(request: Request) -> None:
         raise RateLimitExceededError(retry_after_seconds=retry_after)
 
 
+def refresh_token_cookie_secure() -> bool:
+    return settings.environment == "production"
+
+
 def set_refresh_token_cookie(
     response: Response,
     refresh_token: str,
@@ -81,7 +86,19 @@ def set_refresh_token_cookie(
         max_age=max_age,
         expires=expires_at,
         path=REFRESH_TOKEN_COOKIE_PATH,
-        secure=settings.environment == "production",
+        secure=refresh_token_cookie_secure(),
+        httponly=True,
+        samesite="lax",
+    )
+
+
+def clear_refresh_token_cookie(response: Response) -> None:
+    # Browsers only replace the cookie when name, path and domain match; the other attributes
+    # mirror the cookie set at login, refresh and registration.
+    response.delete_cookie(
+        key=REFRESH_TOKEN_COOKIE_NAME,
+        path=REFRESH_TOKEN_COOKIE_PATH,
+        secure=refresh_token_cookie_secure(),
         httponly=True,
         samesite="lax",
     )
@@ -153,3 +170,34 @@ def refresh(
         result.refresh_token_max_age,
     )
     return TokenResponse(access_token=result.access_token, expires_in=result.expires_in)
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def logout(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    refresh_token: Annotated[str | None, Cookie(alias=REFRESH_TOKEN_COOKIE_NAME)] = None,
+) -> Response:
+    """Ends the current session, identified by the HttpOnly refresh-token cookie."""
+    try:
+        service.logout(db, refresh_token=refresh_token)
+    except InvalidRefreshTokenError as error:
+        # The cookie is invalid anyway; removing it grants nothing and stops further use.
+        response = error_response(
+            request,
+            status_code=error.status_code,
+            code=error.code,
+            message=error.message,
+        )
+        clear_refresh_token_cookie(response)
+        return response
+
+    # Only reached after the revocation was committed; unexpected errors propagate as a 500
+    # without touching the cookie.
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    clear_refresh_token_cookie(response)
+    return response
